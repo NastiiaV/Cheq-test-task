@@ -1,0 +1,84 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+        working-directory: api
+      - run: npm test
+        working-directory: api
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - id: account
+        run: echo "id=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the API image
+        env:
+          REGISTRY: ${{ steps.account.outputs.id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        run: |
+          docker build -t "$REGISTRY/cheq-task-api:${{ github.sha }}" api
+          docker push "$REGISTRY/cheq-task-api:${{ github.sha }}"
+
+      - name: Deploy to EC2
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          IMAGE: ${{ steps.account.outputs.id }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/cheq-task-api:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          HOST=$(aws ec2 describe-instances \
+            --filters Name=tag:Name,Values=cheq-task-api Name=instance-state-name,Values=running \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+          scp -i ~/.ssh/deploy_key -r web/dist/. "ec2-user@$HOST:/tmp/web-dist"
+          ssh -i ~/.ssh/deploy_key "ec2-user@$HOST" "bash -s" <<EOF
+          set -euo pipefail
+          sudo mkdir -p /var/www/tasks
+          sudo rm -rf /var/www/tasks/*
+          sudo cp -r /tmp/web-dist/. /var/www/tasks/
+          aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "${IMAGE%/*}"
+          sudo docker pull "$IMAGE"
+          sudo docker rm -f api || true
+          sudo docker run -d --name api --restart unless-stopped -p 3000:3000 "$IMAGE"
+          EOF
