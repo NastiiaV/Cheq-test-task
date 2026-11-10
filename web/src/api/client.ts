@@ -1,10 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import type { Health, Task } from './types'
 
-export type Task = {
-  id: string
-  title: string
-  createdAt: string
-}
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -25,8 +21,15 @@ export function createTask(title: string): Promise<Task> {
   }).then((response) => readJson<Task>(response))
 }
 
-export function getHealth(): Promise<{ status: string }> {
-  return fetch(`${API_BASE}/health`).then((response) =>
-    readJson<{ status: string }>(response),
-  )
+export async function deleteTask(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/tasks/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`)
+  }
+}
+
+export function getHealth(): Promise<Health> {
+  return fetch(`${API_BASE}/health`).then((response) => readJson<Health>(response))
 }

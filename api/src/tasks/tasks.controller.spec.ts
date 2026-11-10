@@ -20,6 +20,12 @@ describe('TasksController', () => {
         stored.push(task);
         return Promise.resolve(task);
       }),
+      delete: jest.fn((id: string) => {
+        const index = stored.findIndex((task) => task.id === id);
+        if (index === -1) return Promise.resolve(false);
+        stored.splice(index, 1);
+        return Promise.resolve(true);
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -111,5 +117,26 @@ describe('TasksController', () => {
 
     expect(response.status).toBe(400);
     expect(repository.save).not.toHaveBeenCalled();
+  });
+
+  it('deletes a task', async () => {
+    stored.push({
+      id: 'a1b2c3',
+      title: 'Write the README',
+      createdAt: '2026-11-02T09:30:00.000Z',
+    });
+
+    const response = await request(app.getHttpServer()).delete('/tasks/a1b2c3');
+
+    expect(response.status).toBe(204);
+    expect(response.body).toEqual({});
+    expect(stored).toEqual([]);
+  });
+
+  it('returns 404 when deleting a missing task', async () => {
+    const response = await request(app.getHttpServer()).delete('/tasks/missing');
+
+    expect(response.status).toBe(404);
+    expect(response.body.message).toBe('task not found');
   });
 });

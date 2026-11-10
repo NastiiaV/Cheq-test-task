@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { createTask, getTasks, type Task } from '../api/client'
+import { createTask, deleteTask, getTasks } from '../api/client'
+import type { Task } from '../api/types'
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -28,5 +29,15 @@ export function useTasks() {
     setError(null)
   }
 
-  return { tasks, loading, error, addTask }
+  async function removeTask(id: string) {
+    try {
+      await deleteTask(id)
+      setTasks((current) => current.filter((task) => task.id !== id))
+      setError(null)
+    } catch {
+      setError('Could not delete the task. Please try again.')
+    }
+  }
+
+  return { tasks, loading, error, addTask, removeTask }
 }

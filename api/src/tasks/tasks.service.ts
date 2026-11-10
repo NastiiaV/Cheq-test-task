@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ITask } from './interfaces/task.interface';
 import { TaskRepository } from './repo/task.repository';
@@ -27,5 +31,12 @@ export class TasksService {
       createdAt: new Date().toISOString(),
     };
     return this.tasks.save(task);
+  }
+
+  async remove(id: string): Promise<void> {
+    const removed = await this.tasks.delete(id);
+    if (!removed) {
+      throw new NotFoundException('task not found');
+    }
   }
 }

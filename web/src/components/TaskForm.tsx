@@ -1,15 +1,12 @@
-import { useState, type FormEvent } from 'react'
-
-type TaskFormProps = {
-  onCreate: (title: string) => Promise<void>
-}
+import { useState, type SubmitEvent } from 'react'
+import type { TaskFormProps } from './types'
 
 export function TaskForm({ onCreate }: TaskFormProps) {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) {

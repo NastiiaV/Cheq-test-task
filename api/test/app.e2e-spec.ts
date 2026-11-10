@@ -42,6 +42,18 @@ describe('Task API (e2e)', () => {
       .send({ title: '' });
     expect(invalid.status).toBe(400);
 
+    const removed = await request(app.getHttpServer()).delete(
+      `/tasks/${created.body.id}`,
+    );
+    expect(removed.status).toBe(204);
+
+    const missing = await request(app.getHttpServer()).delete('/tasks/missing');
+    expect(missing.status).toBe(404);
+
+    const afterDelete = await request(app.getHttpServer()).get('/tasks');
+    expect(afterDelete.status).toBe(200);
+    expect(afterDelete.body).toEqual([]);
+
     expect(log).toHaveBeenCalledWith(
       expect.stringMatching(/^GET \/health 200 \d+ms$/),
     );

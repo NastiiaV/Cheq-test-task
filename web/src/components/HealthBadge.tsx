@@ -1,6 +1,4 @@
-type HealthBadgeProps = {
-  up: boolean | null
-}
+import type { HealthBadgeProps } from './types'
 
 export function HealthBadge({ up }: HealthBadgeProps) {
   const label = up === null ? 'Checking API' : up ? 'API up' : 'API down'

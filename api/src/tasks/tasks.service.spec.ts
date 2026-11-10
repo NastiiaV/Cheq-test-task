@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TaskRepository } from './repo/task.repository';
 import { TasksService } from './tasks.service';
@@ -11,6 +11,7 @@ describe('TasksService', () => {
     repository = {
       findAll: jest.fn(),
       save: jest.fn(),
+      delete: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -71,6 +72,23 @@ describe('TasksService', () => {
         BadRequestException,
       );
       expect(repository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes a stored task', async () => {
+      repository.delete.mockResolvedValue(true);
+
+      await expect(service.remove('abc')).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith('abc');
+    });
+
+    it('rejects a task that does not exist', async () => {
+      repository.delete.mockResolvedValue(false);
+
+      await expect(service.remove('missing')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

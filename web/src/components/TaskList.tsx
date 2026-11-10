@@ -1,11 +1,6 @@
-import type { Task } from '../api/client'
+import type { TaskListProps } from './types'
 
-type TaskListProps = {
-  tasks: Task[]
-  loading: boolean
-}
-
-export function TaskList({ tasks, loading }: TaskListProps) {
+export function TaskList({ tasks, loading, onDelete }: TaskListProps) {
   if (loading) return <p>Loading tasks…</p>
   if (tasks.length === 0) return <p>No tasks yet.</p>
 
@@ -13,10 +8,15 @@ export function TaskList({ tasks, loading }: TaskListProps) {
     <ul>
       {tasks.map((task) => (
         <li key={task.id}>
-          {task.title}
-          <time dateTime={task.createdAt}>
-            {new Date(task.createdAt).toLocaleString()}
-          </time>
+          <div>
+            {task.title}
+            <time dateTime={task.createdAt}>
+              {new Date(task.createdAt).toLocaleString()}
+            </time>
+          </div>
+          <button type="button" onClick={() => void onDelete(task.id)}>
+            Delete
+          </button>
         </li>
       ))}
     </ul>

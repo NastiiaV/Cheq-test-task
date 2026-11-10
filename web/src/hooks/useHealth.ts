@@ -17,7 +17,7 @@ export function useHealth() {
     }
 
     void check()
-    const timer = window.setInterval(() => void check(), 5000)
+    const timer = window.setInterval(() => void check(), 60_000)
     return () => {
       ignore = true
       window.clearInterval(timer)
